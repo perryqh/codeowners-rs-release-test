@@ -88,6 +88,11 @@ gh attestation verify codeowners-mac.tar.gz \
   --signer-workflow rubyatscale/codeowners-rs/.github/workflows/ci.yml
 ```
 
+Attestation was added to the release pipeline after v0.3.4, so releases up to and
+including v0.3.4 have none — `gh attestation verify` reports "no matching
+attestations found" for them. That is expected for those versions and is not
+evidence of tampering.
+
 Note that macOS binaries are ad-hoc (linker) signed only — they are not signed with
 an Apple Developer ID and are not notarized.
 

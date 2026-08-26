@@ -20,6 +20,15 @@ env:
 permissions:
   contents: read
 
+# Two pushes to main in quick succession would otherwise be able to run two
+# `release` jobs concurrently, and a draft release is not protected by tag
+# uniqueness the way a published one is (see the release job below).
+# On main, queue rather than cancel -- cancelling mid-release would leave a
+# partial draft. Everywhere else, superseding an in-flight run is what you want.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   check:
     name: Check
@@ -99,7 +108,17 @@ jobs:
       - name: Create draft GitHub Release if current commit has updated the version in Cargo.toml
         if: steps.check_for_version_changes.outputs.changed == 'true'
         run: |
-          gh release create "$NEW_VERSION" --target "$COMMIT_SHA" --generate-notes --draft
+          # A draft release does not create a git tag, so GitHub does NOT enforce
+          # tag uniqueness for drafts -- `gh release create` would happily make a
+          # second draft with the same pending tag name, and the DotSlash
+          # generator resolves whichever one the API returns first. That is
+          # reachable via "Re-run all jobs" after a failed upload, so reuse an
+          # existing draft instead of creating a duplicate.
+          if [[ "$(gh release view "$NEW_VERSION" --json isDraft --jq .isDraft 2>/dev/null)" == "true" ]]; then
+            echo "Draft $NEW_VERSION already exists; reusing it."
+          else
+            gh release create "$NEW_VERSION" --target "$COMMIT_SHA" --generate-notes --draft
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_VERSION: ${{ steps.check_for_version_changes.outputs.new_version }}
@@ -133,7 +152,6 @@ jobs:
           # than assume. https://developer.apple.com/forums/thread/708552
           codesign --force --sign - target/codeowners
           codesign --verify --verbose target/codeowners
-          codesign -dv target/codeowners
 
           # Creates artifact for homebrew. -C means run from `target` directory
           # NOTE: any mutation of the binary must happen BEFORE signing, and
@@ -148,8 +166,10 @@ jobs:
 
       - name: Upload mac universal binary
         run: |
-          # This tarball is a binary that is executable
-          gh release upload "$NEW_VERSION" target/codeowners-mac.tar.gz
+          # This tarball is a binary that is executable.
+          # --clobber so re-running after a partial failure replaces the asset
+          # instead of failing on "asset already exists".
+          gh release upload "$NEW_VERSION" target/codeowners-mac.tar.gz --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_VERSION: ${{ needs.release.outputs.new_version }}
@@ -166,7 +186,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Update local toolchain
         run: |
-          cargo install cross
+          # Pinned so a future cross release cannot change how release binaries
+          # are built without a reviewed commit. 0.2.5 is what an unpinned
+          # `cargo install cross` resolves to today, so this is not a version
+          # bump. Deliberately not --locked: cross 0.2.5's lockfile predates
+          # current rustc and this build cannot be exercised outside `main`.
+          cargo install cross --version 0.2.5
       - name: Build linux binaries
         run: |
           cross build --release --target x86_64-unknown-linux-gnu
@@ -185,8 +210,10 @@ jobs:
 
       - name: Upload linux binaries
         run: |
-          gh release upload "$NEW_VERSION" target/x86_64-unknown-linux-gnu.tar.gz
-          gh release upload "$NEW_VERSION" target/aarch64-unknown-linux-gnu.tar.gz
+          # --clobber so re-running after a partial failure replaces the assets
+          # instead of failing on "asset already exists".
+          gh release upload "$NEW_VERSION" target/x86_64-unknown-linux-gnu.tar.gz --clobber
+          gh release upload "$NEW_VERSION" target/aarch64-unknown-linux-gnu.tar.gz --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEW_VERSION: ${{ needs.release.outputs.new_version }}
