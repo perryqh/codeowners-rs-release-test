@@ -1,4 +1,5 @@
 {
+  "exclude-http-provider": true,
   "outputs": {
     "codeowners": {
       "platforms": {
