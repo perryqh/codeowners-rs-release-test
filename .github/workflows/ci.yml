@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run cargo check
         run: cargo check
@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run cargo test with backtrace
         run: cargo test -- --nocapture
@@ -57,7 +57,7 @@ jobs:
       RUSTFLAGS: "-Dwarnings"
     steps:
       - name: Checkout sources
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
@@ -84,7 +84,7 @@ jobs:
       changed: ${{ steps.check_for_version_changes.outputs.changed }}
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # https://stackoverflow.com/questions/65944700/how-to-run-git-diff-in-github-actions
           # TLDR – By default this action fetches no history.
@@ -136,7 +136,7 @@ jobs:
       attestations: write
     if: needs.release.outputs.new_version != ''
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build
         run: cargo build --release --target aarch64-apple-darwin --target x86_64-apple-darwin
 
@@ -183,7 +183,7 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Update local toolchain
         run: |
           # Pinned so a future cross release cannot change how release binaries
@@ -230,7 +230,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: facebook/dotslash-publish-release@2539c4d8ae00a42773306c8731d2dd3724d979d2 # v1
+      - uses: facebook/dotslash-publish-release@9c9ec027515c34db9282a09a25a9cab5880b2c52 # v2
         # This is necessary because the action uses
         # `gh release upload` to publish the generated DotSlash file(s)
         # as part of the release.
